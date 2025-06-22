@@ -1,9 +1,9 @@
-﻿using System.Diagnostics.CodeAnalysis;
+using System.Diagnostics.CodeAnalysis;
 
 using App001.Contracts.Services;
 using App001.Helpers;
 using App001.ViewModels;
-using App001.Views;
+
 using Microsoft.UI.Xaml.Controls;
 
 namespace App001.Services;
@@ -65,26 +65,24 @@ public class NavigationViewService : INavigationViewService
         {
             var selectedItem = args.InvokedItemContainer as NavigationViewItem;
 
+            // サブメニュー項目の処理
             if (selectedItem != null)
             {
-                // NavigationHelper.NavigateToプロパティを最初にチェック
-                if (selectedItem.GetValue(NavigationHelper.NavigateToProperty) is string pageKey && !string.IsNullOrEmpty(pageKey))
+                // Tagプロパティをチェック
+                if (selectedItem.Tag is string tag)
+                {
+                    switch (tag)
+                    {
+                        case "Sub":
+                            _navigationService.NavigateTo(typeof(SubViewModel).FullName!);
+                            break;
+                        // 他のTagベースのナビゲーションもここに追加
+                    }
+                }
+                // NavigationHelper.NavigateToプロパティをチェック
+                else if (selectedItem.GetValue(NavigationHelper.NavigateToProperty) is string pageKey)
                 {
                     _navigationService.NavigateTo(pageKey);
-                }
-                // Tagプロパティをフォールバックとしてチェック（後方互換性のため）
-                else if (selectedItem.Tag is string tag && !string.IsNullOrEmpty(tag))
-                {
-                    // 特定のTagに基づくナビゲーション
-                    var viewModelName = $"App001.ViewModels.{tag}ViewModel";
-                    try
-                    {
-                        _navigationService.NavigateTo(viewModelName);
-                    }
-                    catch (ArgumentException)
-                    {
-                        // ページが見つからない場合は何もしない
-                    }
                 }
             }
         }
@@ -99,7 +97,6 @@ public class NavigationViewService : INavigationViewService
                 return item;
             }
 
-            // サブメニュー項目も再帰的にチェック
             var selectedChild = GetSelectedItem(item.MenuItems, pageType);
             if (selectedChild != null)
             {
@@ -112,34 +109,31 @@ public class NavigationViewService : INavigationViewService
 
     private bool IsMenuItemForPageType(NavigationViewItem menuItem, Type sourcePageType)
     {
-        // NavigationHelper.NavigateToプロパティベースの確認
-        if (menuItem.GetValue(NavigationHelper.NavigateToProperty) is string pageKey && !string.IsNullOrEmpty(pageKey))
+        // Tagベースの確認
+        if (menuItem.Tag is string tag)
         {
             try
             {
-                return _pageService.GetPageType(pageKey) == sourcePageType;
+                // Subページの場合
+                if (tag == "Sub" && sourcePageType == typeof(SubPage))
+                {
+                    return true;
+                }
+                
+                // 他のTagベースのページも同様に処理
+                var pageType = _pageService.GetPageType($"App001.ViewModels.{tag}ViewModel");
+                return pageType == sourcePageType;
             }
-            catch (ArgumentException)
+            catch
             {
-                // ページが見つからない場合は false を返す
-                return false;
+                // タグが有効なページタイプでない場合は無視
             }
         }
 
-        // Tagベースの確認（後方互換性のため）
-        if (menuItem.Tag is string tag && !string.IsNullOrEmpty(tag))
+        // NavigationHelper.NavigateToプロパティベースの確認
+        if (menuItem.GetValue(NavigationHelper.NavigateToProperty) is string pageKey)
         {
-            try
-            {
-                var viewModelName = $"App001.ViewModels.{tag}ViewModel";
-                var pageType = _pageService.GetPageType(viewModelName);
-                return pageType == sourcePageType;
-            }
-            catch (ArgumentException)
-            {
-                // ページが見つからない場合は false を返す
-                return false;
-            }
+            return _pageService.GetPageType(pageKey) == sourcePageType;
         }
 
         return false;

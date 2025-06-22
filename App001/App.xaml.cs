@@ -76,6 +76,7 @@ public partial class App : Application
             services.AddTransient<詳細を一覧表示Page>();
             services.AddTransient<MainViewModel>();
             services.AddTransient<MainPage>();
+            services.AddTransient<SubViewModel>();
             services.AddTransient<SubPage>();
             services.AddTransient<ShellPage>();
             services.AddTransient<ShellViewModel>();
